@@ -1,5 +1,5 @@
-group = 'com.sjl'
-version = '1.0.0'
+group = 'com.classtingmobile'
+version = '1.0.1'
 
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
