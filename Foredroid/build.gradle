@@ -3,7 +3,6 @@ version = '1.0.0'
 
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
-apply plugin: 'com.jfrog.bintray'
 
 android {
     compileSdkVersion 23
@@ -24,25 +23,6 @@ android {
 
 def siteUrl = 'https://github.com/steveliles/Foredroid'
 def gitUrl = 'https://github.com/steveliles/Foredroid.git'
-
-bintray {
-    user = bintrayUser
-    key = bintrayApiKey
-
-    configurations = ['archives']
-    pkg {
-        repo = "maven"
-        name = "Foredroid"
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = ["Apache-2.0"]
-        publish = true
-        version {
-            name = '1.0.0'
-        }
-        labels = ['aar', 'android']
-    }
-}
 
 install {
     repositories.mavenInstaller {

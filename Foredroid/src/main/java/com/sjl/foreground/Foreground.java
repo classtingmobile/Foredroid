@@ -63,27 +63,31 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
     public static final long CHECK_DELAY = 2000;
 
     public interface Listener {
-        public void onBecameForeground();
-        public void onBecameBackground();
+        void onBecameForeground();
+        void onBecameBackground();
     }
 
     public interface Binding {
-        public void unbind();
+        void unbind();
     }
 
     private interface Callback {
-        public void invoke(Listener listener);
+        void invoke(Listener listener);
     }
 
     private static class Listeners {
         private List<WeakReference<Listener>> listeners = new CopyOnWriteArrayList<>();
 
-        public Binding add(Listener listener){
+        public Binding add(final Listener listener){
             final WeakReference<Listener> wr = new WeakReference<>(listener);
-            listeners.add(wr);
+            if (listeners != null) {
+                listeners.add(wr);
+            }
             return new Binding(){
                 public void unbind() {
-                    listeners.remove(wr);
+                    if (listeners != null) {
+                        listeners.remove(wr);
+                    }
                 }
             };
         }
@@ -97,6 +101,28 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
                         callback.invoke(l);
                     else
                         it.remove();
+                } catch (Exception exc) {
+                    Log.e(TAG, "Listener threw exception!", exc);
+                }
+            }
+        }
+
+        public void invokeLast(Callback callback) {
+            WeakReference<Listener> last = listeners.get(listeners.size() - 1);
+            if (last != null) {
+                Listener listener = last.get();
+                if (listener != null) {
+                    callback.invoke(listener);
+                }
+            }
+
+            for (Iterator<WeakReference<Listener>> it = listeners.iterator(); it.hasNext();) {
+                try {
+                    WeakReference<Listener> wr = it.next();
+                    Listener l = wr.get();
+                    if (l == null) {
+                        it.remove();
+                    }
                 } catch (Exception exc) {
                     Log.e(TAG, "Listener threw exception!", exc);
                 }
@@ -171,12 +197,14 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
         if (!activity.isChangingConfigurations()) {
             // don't prevent activity being gc'd
             final WeakReference<Activity> ref = new WeakReference<>(activity);
-            handler.postDelayed(check = new Runnable() {
-                @Override
-                public void run() {
-                    onActivityCeased(ref.get());
-                }
-            }, CHECK_DELAY);
+            if (handler != null) {
+                handler.postDelayed(check = new Runnable() {
+                    @Override
+                    public void run() {
+                        onActivityCeased(ref.get());
+                    }
+                }, CHECK_DELAY);
+            }
         }
     }
 
@@ -185,7 +213,7 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
         current = activity;
         // remove any scheduled checks since we're starting another activity
         // we're definitely not going background
-        if (check != null) {
+        if (check != null && handler != null) {
             handler.removeCallbacks(check);
         }
 
@@ -193,7 +221,9 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
         if (!foreground && (activity != null && !activity.isChangingConfigurations())){
             foreground = true;
             Log.w(TAG, "became foreground");
-            listeners.each(becameForeground);
+            if (listeners != null) {
+                listeners.invokeLast(becameForeground);
+            }
         } else {
             Log.i(TAG, "still foreground");
         }
@@ -201,7 +231,7 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityStopped(Activity activity) {
-        if (check != null) {
+        if (check != null && handler != null) {
             handler.removeCallbacks(check);
         }
         onActivityCeased(activity);
@@ -222,7 +252,9 @@ public class Foreground implements Application.ActivityLifecycleCallbacks {
             if ((activity == current) && (activity != null && !activity.isChangingConfigurations())){
                 foreground = false;
                 Log.w(TAG, "went background");
-                listeners.each(becameBackground);
+                if (listeners != null) {
+                    listeners.invokeLast(becameBackground);
+                }
             } else {
                 Log.i(TAG, "still foreground");
             }
